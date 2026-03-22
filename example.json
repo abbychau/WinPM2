@@ -1,0 +1,12 @@
+{
+  "apps" : [{
+    "name"   : "articles.zkiz.com",
+    "script" : "swoole-cli",
+    "args" : ["-S", "0.0.0.0:19998"],
+    "cwd": "C:/Repos/articles.zkiz.com",
+    "env": {
+      "PHP_CLI_SERVER_WORKERS": 4
+    },
+    "watch": false
+  }]
+}
