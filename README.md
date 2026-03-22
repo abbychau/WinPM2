@@ -1,56 +1,65 @@
 # winpm2
 
-`winpm2` is a lightweight Windows-first process manager inspired by PM2, implemented in Go.
+`winpm2` is a lightweight PM2-style process manager for Windows, written in Go.
 
-It is designed to keep IPC and runtime overhead low while still providing PM2-style ecosystem support, process resurrection, and startup automation.
+## Why This Exists
 
-## Why winpm2
+PM2 works best on Linux. On Windows, startup and control overhead can be awkward.
 
-- Lower control-plane overhead with local named-pipe IPC
-- Single Go binary with no Node.js runtime dependency
-- PM2-style ecosystem JSON input (`apps`, `script`, `args`, `cwd`, `env`)
-- Process resurrection support (`save` and `resurrect`)
-- Per-user startup integration using `HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run`
+`winpm2` focuses on Windows-first behavior:
 
-## Installation
+- Single Go binary (no Node.js runtime required)
+- Local named-pipe control channel (low control-plane overhead)
+- Per-user auto-start at logon via Windows Run key
+- Saved process resurrection (`save` + `--autoload`)
+- PM2-style ecosystem JSON compatibility
+- Hidden background launch (no extra console popup)
+- Process-tree stop on Windows (`taskkill /T /F`)
 
-Build from source:
+## Install
 
 ```bash
 go build -o winpm2.exe
 ```
+
+Put `winpm2.exe` in a directory included in `PATH` (for example `C:\bin`).
 
 ## Commands
 
 ```text
 winpm2 daemon [--autoload]
 winpm2 startup install|uninstall|status
+
 winpm2 start <ecosystem.json|name>
 winpm2 stop <name|all|ecosystem.json>
 winpm2 restart <name|all|ecosystem.json>
 winpm2 delete <name|all|ecosystem.json>
+
 winpm2 list
 winpm2 ls
 winpm2 describe <name|ecosystem.json>
+
 winpm2 save
 winpm2 resurrect
 ```
 
-## Startup Behavior
+## Startup Model
 
-- `startup install` writes a `winpm2` entry to `HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run`
-- The entry starts `winpm2 daemon --autoload` at user logon
-- `startup uninstall` removes the run key entry
+- `startup install` writes `HKCU\Software\Microsoft\Windows\CurrentVersion\Run\winpm2`
+- Startup command is `winpm2 daemon --autoload`
+- `startup uninstall` removes the same Run key entry
+
+This is per-user logon startup (not pre-logon system service startup).
 
 ## State and Logs
 
 - State directory: `~/.winpm2/`
-- Saved process dump: `~/.winpm2/dump.json`
-- Logs: `~/.winpm2/logs/<app>-out.log` and `~/.winpm2/logs/<app>-err.log`
+- Saved dump: `~/.winpm2/dump.json`
+- Logs: `~/.winpm2/logs/<app>-out.log`, `~/.winpm2/logs/<app>-err.log`
 
-## Ecosystem File Example
+## Ecosystem Example
 
-Example file is provided at `example.json`.
+`example.json`:
 
 ```json
 {
@@ -69,29 +78,16 @@ Example file is provided at `example.json`.
 }
 ```
 
-## Promotion Points
-
-- Built specifically for Windows process management
-- Lower control-plane overhead than PM2 by using local named pipes
-- Per-user startup via Windows Run key with automatic `--autoload` resurrection
-- PM2-style ecosystem onboarding with file-based `start/stop/restart/delete`
-- No extra console popup when launching daemon or managed apps
-- Better operational tooling with `ls` alias and `describe` command
-- Stronger stop behavior by killing the full process tree on Windows
-
-## Considerations
-
-- Startup is user-logon triggered (not pre-logon system boot)
-- If the daemon crashes, Run-key startup retries on next logon only
-- `watch` is currently ignored in MVP
-- Child process graceful shutdown semantics depend on process behavior; kill fallback is used
-- Keep script paths and working directories explicit to avoid service/session environment differences
-
-## Typical Workflow
+## Quick Workflow
 
 ```bash
 winpm2 startup install
 winpm2 start example.json
 winpm2 save
-winpm2 list
+winpm2 ls
 ```
+
+## Current MVP Limits
+
+- `watch` is accepted but currently ignored
+- Run-key startup retries on next logon if daemon is not running
