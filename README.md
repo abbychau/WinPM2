@@ -1,93 +1,58 @@
 # winpm2
 
-`winpm2` is a lightweight PM2-style process manager for Windows, written in Go.
+Windows-first process manager inspired by PM2, built in Go.
 
-## Why This Exists
+`winpm2` is designed for teams that want PM2-style workflow on Windows with lower overhead, cleaner startup behavior, and simple deployment.
 
-PM2 works best on Linux. On Windows, startup and control overhead can be awkward.
+## Highlights
 
-`winpm2` focuses on Windows-first behavior:
-
-- Single Go binary (no Node.js runtime required)
-- Local named-pipe control channel (low control-plane overhead)
+- Native Windows focus (not Linux-first behavior ported over)
+- Single binary, no Node.js runtime dependency
+- Local named-pipe IPC for low control-plane overhead
+- PM2-style ecosystem JSON (`apps`, `script`, `args`, `cwd`, `env`)
 - Per-user auto-start at logon via Windows Run key
-- Saved process resurrection (`save` + `--autoload`)
-- PM2-style ecosystem JSON compatibility
-- Hidden background launch (no extra console popup)
-- Process-tree stop on Windows (`taskkill /T /F`)
+- Auto-resurrect on startup (`save` + `daemon --autoload`)
+- Hidden background launch (no extra console windows)
+- Process-tree stop on Windows
 
-## Install
+## Why Use winpm2 Instead of PM2 on Windows
+
+- Startup is straightforward with `HKCU\...\Run`
+- Runtime footprint is smaller (Go binary + local IPC)
+- Better fit for Windows operational model
+
+| Area | winpm2 | PM2 on Windows |
+| --- | --- | --- |
+| Runtime dependency | Single Go binary | Requires Node.js + npm environment |
+| Startup integration | Built-in `startup install` with HKCU Run key | Usually needs extra startup setup/workarounds |
+| Control channel | Local named pipe IPC | Node-based daemon/IPC model |
+| Console behavior | Hidden background launch by default | May involve extra console/session behavior |
+| Process stop semantics | Supports Windows process-tree stop | Behavior depends on process/session setup |
+| Ecosystem migration | PM2-style ecosystem JSON supported | Native PM2 ecosystem format |
+
+## Quick Start
 
 ```bash
 go build -o winpm2.exe
-```
-
-Put `winpm2.exe` in a directory included in `PATH` (for example `C:\bin`).
-
-## Commands
-
-```text
-winpm2 daemon [--autoload]
-winpm2 startup install|uninstall|status
-
-winpm2 start <ecosystem.json|name>
-winpm2 stop <name|all|ecosystem.json>
-winpm2 restart <name|all|ecosystem.json>
-winpm2 delete <name|all|ecosystem.json>
-
-winpm2 list
-winpm2 ls
-winpm2 describe <name|ecosystem.json>
-
-winpm2 save
-winpm2 resurrect
-```
-
-## Startup Model
-
-- `startup install` writes `HKCU\Software\Microsoft\Windows\CurrentVersion\Run\winpm2`
-- Startup command is `winpm2 daemon --autoload`
-- `startup uninstall` removes the same Run key entry
-
-This is per-user logon startup (not pre-logon system service startup).
-
-## State and Logs
-
-- State directory: `~/.winpm2/`
-- Saved dump: `~/.winpm2/dump.json`
-- Logs: `~/.winpm2/logs/<app>-out.log`, `~/.winpm2/logs/<app>-err.log`
-
-## Ecosystem Example
-
-`example.json`:
-
-```json
-{
-  "apps": [
-    {
-      "name": "articles.zkiz.com",
-      "script": "swoole-cli",
-      "args": ["-S", "0.0.0.0:19998"],
-      "cwd": "C:/Repos/articles.zkiz.com",
-      "env": {
-        "PHP_CLI_SERVER_WORKERS": 4
-      },
-      "watch": false
-    }
-  ]
-}
-```
-
-## Quick Workflow
-
-```bash
 winpm2 startup install
 winpm2 start example.json
 winpm2 save
 winpm2 ls
 ```
 
-## Current MVP Limits
+## Example Ecosystem File
 
-- `watch` is accepted but currently ignored
-- Run-key startup retries on next logon if daemon is not running
+See `example.json`.
+
+## Documentation
+
+- Usage guide: `docs/usage.md`
+
+## Project Status
+
+MVP is working and actively evolving.
+
+Current known limits:
+
+- `watch` is parsed but not implemented yet
+- Run-key startup restarts at next logon if daemon is manually killed
